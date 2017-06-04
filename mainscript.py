@@ -3,16 +3,18 @@ from os import chdir as chdir
 from os import getcwd as getcwd
 from os import listdir as listdir
 from os import mkdir as mkdir
+from os import path as path
 from os import remove as Remove
 from shutil import move as move
 from shutil import rmtree as rmtree
+from sys import argv as argv
 from zipfile import ZipFile as ZipFile
 
 PARSER = ArgumentParser()
 PARSER.add_argument(
     "-install", "-i", help="Checks if you are installing, 1 = Yes.", type=int)
-PARSER.add_argument("-uninstall", "-u",
-                    help="Checks if you are uninstalling, 1 = Yes.", type=int)
+PARSER.add_argument(
+    "-uninstall", "-u", help="Checks if you are uninstalling, 1 = Yes.", type=int)
 PARSER.add_argument(
     "-game", "-g", help="Which game you are planning to install mods to.", type=str)
 
@@ -100,23 +102,44 @@ class Stellaris:
         Function used to delete files and folders
 
         How it works:
-        \r\t1. For each folder found when listing directory, runs if/elif/else
-        \r\t2. If folder doesn't end with ".zip" or any other extension, proceed to remove folder
-        \r\t3. If it does end with ".zip", proceed to remove folder (as in a file)
-        \r\t4. Else, raise ValueError (used for now)
+        \r\t1. Creates a tuple of ignored files
+        \r\t2. Creates a tuple of allowed files
         """
-        ignore = {".git", ".gitignore", ".vscode", "LICENSE", "license", ".py", ".pyw", ".exe"}
-        for folder in listdir():
-            if folder not in ignore:
-                if not folder.endswith(".zip") and not folder.endswith(".*"):
-                    rmtree(folder)
-                elif folder.endswith(".zip"):
-                    Remove(folder)
+        ignore = (
+            ".git", ".gitignore", ".vscode", "LICENSE", "license",
+            ".py", ".pyw", ".exe")
+        allowed = (".zip", ".mod")
+        success = 0
+        error = 0
+        for f in listdir():
+            if f not in ignore:
+                if path.isdir(f):
+                    rmtree(f)
+                    success += 1
+                elif path.isfile(f) and f.endswith(tuple(allowed)):
+                    Remove(f)
+                    success += 1
+                elif f == argv[0]:
+                    pass
                 else:
-                    print("Error!, delete()")
-            else:
-                print("Error!, no elligible files")
+                    error += 1
+                    print(
+                        "Error when deleting file {0}, file not allowed to be deleted.".format(f))
 
+        if success != 0 and error == 0:
+            # If any number of files were successfully deleted
+            # and no errors were found, print msg:
+            print("Deleted {0} files and/or folders!".format(success))
+        elif success != 0 and error != 0:
+            # If any number of files were succesfully deleted
+            # and there was at least one error, print msg:
+            print(
+                "Deleted {0} files and/or folders!, but there were {1} errors!".format(
+                    success, error))
+        else:
+            # If no files were deleted and no error found,
+            # print msg
+            print("Deleted 0 files and/or folders!, because none [eligible] were found.")
 
 try:
     INSTALL = ARGS.install
