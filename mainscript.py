@@ -1,3 +1,6 @@
+"""
+argparse module
+"""
 from argparse import ArgumentParser as ArgumentParser
 from os import chdir as chdir
 from os import getcwd as getcwd
@@ -20,6 +23,12 @@ PARSER.add_argument(
 
 ARGS = PARSER.parse_args()
 
+class InvalidArgumentError(Exception):
+    """
+    Custom exception
+    """
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
 
 class Stellaris:
     """
@@ -58,15 +67,35 @@ class Stellaris:
         \r\t7. Calls editor function
         \r\t8. When editor is done, it goes over all steps again, until no new file can be found.
         """
+        success = 0
+        error = 0
         for file_name_ext in listdir():
             if file_name_ext.endswith(".zip"):
                 file_name = file_name_ext.replace(".zip", "")
                 with ZipFile(file_name_ext, 'r') as exe:
                     mkdir(file_name)
                     exe.extractall(file_name)
+                    success += 1
                     Stellaris.editor(file_name)
             else:
-                print("Error!, unzipper()")
+                error += 1
+                print(
+                    "Error! File {0} isn't a zip".format(file_name_ext))
+
+        if success != 0 and error == 0:
+            # If any number of files were successfully extracted
+            # and no non-zip were found, print msg:
+            print("Extracted {0} files".format(success))
+        elif success != 0 and error != 0:
+            # If any number of files were succesfully extracted
+            # and there was at least one non-zip, print msg:
+            print(
+                "Extracted {0} files, but found {1} non-zip files".format(
+                    success, error))
+        else:
+            # If no files were deleted and no error found,
+            # print msg
+            print("Extracted 0 files, because none [eligible] were found.")
 
     @staticmethod
     def editor(file_name):
@@ -111,20 +140,20 @@ class Stellaris:
         allowed = (".zip", ".mod")
         success = 0
         error = 0
-        for f in listdir():
-            if f not in ignore:
-                if path.isdir(f):
-                    rmtree(f)
+        for data in listdir():
+            if data not in ignore:
+                if path.isdir(data):
+                    rmtree(data)
                     success += 1
-                elif path.isfile(f) and f.endswith(tuple(allowed)):
-                    Remove(f)
+                elif path.isfile(data) and data.endswith(tuple(allowed)):
+                    Remove(data)
                     success += 1
-                elif f == argv[0]:
+                elif data == argv[0]:
                     pass
                 else:
                     error += 1
                     print(
-                        "Error when deleting file {0}, file not allowed to be deleted.".format(f))
+                        "Error! File {0} not allowed to be deleted.".format(data))
 
         if success != 0 and error == 0:
             # If any number of files were successfully deleted
@@ -146,11 +175,16 @@ try:
     REMOVE = ARGS.uninstall
     GAME = ARGS.game
 
+    GAMES = ("stellaris")
+
     if INSTALL == 1 and GAME.lower() == "stellaris":
         Stellaris.install()
     elif REMOVE == 1 and GAME.lower() == "stellaris":
         Stellaris.uninstall()
+    elif (INSTALL == 1 or REMOVE == 1) and GAME.lower() not in GAMES:
+        print("\"{0}\" isn't a supported game!".format(GAME))
     else:
-        raise ValueError
-except ValueError as ex:
+        raise InvalidArgumentError(
+            "mainscript.py: error: no arguments. use -h for help")
+except InvalidArgumentError as ex:
     print(ex)
